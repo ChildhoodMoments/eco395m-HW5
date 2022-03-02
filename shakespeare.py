@@ -11,32 +11,43 @@ OUTPUT_PATH = os.path.join(OUTPUT_DIR, "shakespeare_report.csv")
 NUM_LINES_TO_SKIP = 246
 LAST_LINE_START = "End of this Etext"
 
-with open(SHAKESPEARE_PATH, 'r',) as in_file:
-    list_file = in_file.readlines()
-    for i in range(len(list_file)):
-        if list_file[i].startswith('THE END'):   #WHY WE DO NOT USE THE END AS ENDING
-            print(i, list_file[i]) # so the ending line start from 124452, but is there any method we can simplify it
+
+# with open(SHAKESPEARE_PATH, 'r',) as in_file:
+#     list_file = in_file.readlines()
+#     for i in range(len(list_file)):
+#         if list_file[i].startswith(LAST_LINE_START):   WHY WE DO NOT USE THE END AS ENDING
+#             print(i, list_file[i]) # so the ending line start from 124452, but is there any method we can simplify it
 
 # show which line we should ignore
-with open(SHAKESPEARE_PATH, 'r',) as in_file:
-    list_file = in_file.readlines()
-    content = list_file[246:124437]
+# with open(SHAKESPEARE_PATH, 'r',) as in_file:
+#     list_file = in_file.readlines()
+#     content = list_file[246:124452]
 
 
-
-
-def load_shakespeare_lines(initial_file):
+def load_shakespeare_lines():
     "Loads every line in the dataset that was written by Shakespeare as a list of strings."
-    "initial_file must be a list"
 
     shakespeare_lines = []
-    for i in initial_file:
+    with open(SHAKESPEARE_PATH, 'r', ) as in_file:
+        list_file = in_file.readlines()
+        content = list_file[246:124452]
+    for i in content:
         shakespeare_lines.append(i)
 
     return shakespeare_lines
 
-all_content = load_shakespeare_lines(content)
+# all_content = load_shakespeare_lines()
 
+def listToString(s):
+    # initialize an empty string
+    str1 = ""
+
+    # traverse in the string
+    for ele in s:
+        str1 += ele
+
+        # return string
+    return str1
 
 
 def get_shakespeare_words(shakespeare_lines):
@@ -45,9 +56,13 @@ def get_shakespeare_words(shakespeare_lines):
     for i in shakespeare_lines:
         lower_content = i.lower()
         lower_list_content.append(lower_content)
-    return lower_list_content
+    lower_string = listToString(lower_list_content)
+    flited_str_content = re.sub('[^A-Za-z\s]', '', lower_string)
+    flited_str_content_2 = re.sub("\s+", " ", flited_str_content)
 
-lower_content = get_shakespeare_words(all_content)
+    return flited_str_content_2
+
+# lower_content = get_shakespeare_words(all_content)
 
 
 def  remove_punctuation(uncleanedcontent):
@@ -55,8 +70,10 @@ def  remove_punctuation(uncleanedcontent):
     for i in uncleanedcontent:
         clean_text = re.sub("[^A-Za-z\s]", " ", i)
         clean_content.append(clean_text)
+
+
     return clean_content
-cleaned_content = remove_punctuation(lower_content)  # anyway I can see the cleanning result? or process?
+# cleaned_content = remove_punctuation(lower_content)  # anyway I can see the cleanning result? or process?
 
 
 #Normalize all whitespace to single spaces
@@ -67,7 +84,7 @@ def  remove_spaces(uncleanedcontent):
         text_with_arbitrary_whitespace.append(text_with_only_spaces)
     return text_with_arbitrary_whitespace
 
-nospace_str_content = remove_spaces(cleaned_content)
+# nospace_str_content = remove_spaces(cleaned_content)
 
 
 
@@ -83,26 +100,26 @@ def listToString(s):
 
         # return string
     return str1
-str_content = listToString(nospace_str_content)
+# str_content = listToString(nospace_str_content)
 
-flited_str_content = re.sub('[^A-Za-z\s]', '', str_content)
-flited_str_content_2 = re.sub("\s+", " ", flited_str_content)
+# flited_str_content = re.sub('[^A-Za-z\s]', '', str_content)
+# flited_str_content_2 = re.sub("\s+", " ", flited_str_content)
 
 
 #Read in the stopwords and apply the same cleaning to them as you did to the other text.
-with open(STOPWORDS_PATH, "r" ,encoding='utf-8') as in_file:
-    headline  = in_file.readline()
-    list_file = in_file.readlines()
-    stop_words = list_file
-
-
-nonspace_stopwords = remove_spaces(stop_words)
-
-
-nonspace_stopwords_2 = []
-for i in nonspace_stopwords:
-    nonspace_stopwords_2.append(i.strip())
-
+# with open(STOPWORDS_PATH, "r" ,encoding='utf-8') as in_file:
+#     headline  = in_file.readline()
+#     list_file = in_file.readlines()
+#     stop_words = list_file
+#
+#
+# nonspace_stopwords = remove_spaces(stop_words)
+#
+#
+# nonspace_stopwords_2 = []
+# for i in nonspace_stopwords:
+#     nonspace_stopwords_2.append(i.strip())
+#
 
 
 
@@ -119,24 +136,23 @@ for i in nonspace_stopwords:
 
 
 #
-def load_stopwords(PATH):
+def load_stopwords():
     """Load the stopwords from the file and return a set of the cleaned stopwords."""
-
     stopwords = set()
-
-    with open(PATH, 'r',encoding='utf-8') as in_file:
+    with open(STOPWORDS_PATH, 'r',encoding='utf-8') as in_file:
         list_file = in_file.readlines()
         for i in list_file:
             stopwords.add(i.strip())
     return stopwords
 
-stop_words_revised = load_stopwords(STOPWORDS_PATH)
+# stop_words_revised = load_stopwords()
+
 
 
 def word_count(str_):
     word_counts = {}
     for word in str_.split(" "):
-        if word not in stop_words_revised:  # should be same result as nonspace_stopwords_2
+        if word not in stopwords:  # should be same result as nonspace_stopwords_2
             if word in word_counts:
                 word_counts[word] = word_counts[word] + 1
             else:
@@ -145,25 +161,37 @@ def word_count(str_):
             continue
     return word_counts
 
-word_count_result = word_count(flited_str_content_2)
+def count_words(shakespeare_words, stopwords):
+    word_counts = {}
+    for word in shakespeare_words.split(" "):
+        if word not in stopwords:  # should be same result as nonspace_stopwords_2
+            if word in word_counts:
+                word_counts[word] = word_counts[word] + 1
+            else:
+                word_counts[word] = 1
+        else:
+            continue
+    return word_counts
+
+
+# word_count_result = word_count(flited_str_content_2)
 
 #i) Sort your words by their counts in descending order.
 
-word_count_result = sorted(word_count_result.items(), key= lambda x:x[1],reverse=True)
-print(word_count_result)
+# word_count_sorted = sorted(word_count_result.items(), key= lambda x:x[1],reverse=True)
+def sort_word_counts(word):
+    return sorted(word.items(), key= lambda x:x[1],reverse=True)
 
 
+import csv
+def write_word_counts(word_counts_sorted, OUTPUT_PATH):
+    with open(OUTPUT_PATH, 'w', encoding='utf-8', newline='') as out_file:
+        csv_writer = csv.writer(out_file)
+        header = ["word", "count"]
+        data = word_counts_sorted
+        csv_writer.writerow(header)
+        csv_writer.writerows(data)
 
-
-# import csv
-#
-# with open(OUTPUT_PATH,'w', encoding='utf-8', newline='') as out_file:
-#     csv_writer = csv.writer(out_file)
-#     header = ['word', 'count']
-#
-#     data = word_count_result
-#     csv_writer.writerow(header)
-#     csv_writer.writerows(data)
 
 
 
@@ -221,16 +249,16 @@ print(word_count_result)
 #        # fill this in
 #
 #
-# if __name__ == "__main__":
-#
-#     os.makedirs(OUTPUT_DIR, exist_ok=True)
-#
-#     stopwords = load_stopwords()
-#
-#     shakespeare_lines = load_shakespeare_lines()
-#     shakespeare_words = get_shakespeare_words(shakespeare_lines)
-#
-#     word_counts = count_words(shakespeare_words, stopwords)
-#     word_counts_sorted = sort_word_counts(word_counts)
-#
-#     write_word_counts(word_counts_sorted, OUTPUT_PATH)
+if __name__ == "__main__":
+
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+    stopwords = load_stopwords()
+
+    shakespeare_lines = load_shakespeare_lines()
+    shakespeare_words = get_shakespeare_words(shakespeare_lines)
+
+    word_counts = count_words(shakespeare_words, stopwords)
+    word_counts_sorted = sort_word_counts(word_counts)
+
+    write_word_counts(word_counts_sorted, OUTPUT_PATH)
