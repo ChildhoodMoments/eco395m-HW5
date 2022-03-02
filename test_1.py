@@ -74,6 +74,8 @@ with open(OUTPUT_PATH,'w', encoding='utf-8', newline='') as out_file:
     csv_writer.writerow(header)
     csv_writer.writerows(data)
 
+
+
 #
 # def  remove_punctuation(uncleanedcontent):
 #     clean_content = ""
