@@ -1,0 +1,139 @@
+---
+title: "HW4_1"
+author: "Lizhao"
+date: '2022-04-22'
+output: 
+  md_document:
+    toc: yes
+---
+
+### Clustering and PCA
+```{r setup, include=FALSE}
+wine <- read.csv('https://raw.githubusercontent.com/jgscott/ECO395M/master/data/wine.csv')
+library(tidyverse)
+library(LICORS)  # for kmeans++
+library(foreach)
+library(mosaic)
+library(knitr)
+
+```
+
+#### Clustering model
+we first center and scale the data
+```{r center and scale data, include=FALSE}
+X = wine[,(1:11)]
+X = scale(X, center=TRUE, scale=TRUE)
+
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+distance_between_wines = dist(X)
+```
+
+##### distinguishing colors
+To distinguish color, we first cluster the dataset into two parts, then we run k-means with 2 clusters and 25 starts, and I create plots to show different clusters' color and other variables.
+```{r cluster, include=FALSE}
+clust1 = kmeans(X, 2, nstart=25)
+clust1
+```
+
+```{r plot for pH & density, echo=FALSE}
+qplot(pH, color, data=wine,color=factor(clust1$cluster))
+qplot(alcohol, color, data=wine,color=factor(clust1$cluster))
+qplot(sulphates, color, data=wine,color=factor(clust1$cluster))
+```
+we can clearly see that cluster 1 is almost white and cluster 2 is almost red, no matter what variable is on the x-axis.
+
+then we use kmeans++ method, and get the plot
+
+
+```{r kmeans++ initialization, echo=FALSE}
+clust2 = kmeanspp(X, k=2, nstart=25)
+clust2$center[1,]*sigma + mu
+
+```
+
+```{r kpp plots, echo=FALSE}
+qplot(pH, color, data=wine,color=factor(clust2$cluster))
+qplot(alcohol, color, data=wine,color=factor(clust2$cluster))
+qplot(sulphates, color, data=wine,color=factor(clust2$cluster))
+```
+we also try hierarchical clustering, but the size of cluster is not very balanced, so we don't include too much details for this methods. I just show 6 clusters size under this method.
+
+```{r, hierarchical clustering}
+X = wine[,(1:11)]
+X = scale(X, center=TRUE, scale=TRUE)
+
+mu = attr(X,"scaled:center")
+sigma = attr(X,"scaled:scale")
+distance_between_wines = dist(X, method='euclidean')
+hier_wine = hclust(distance_between_wines, method='average')
+cluster3 = cutree(hier_wine, k=6)
+summary(factor(cluster3))
+```
+
+
+##### distinguish quality
+In this case, I set 6 clusters, for each color it has 3 level quality, and we create plots to show that different clusters with different qualies
+
+```{r make 6 clusters, include=FALSE}
+clust3 = kmeans(X, 6, nstart=25)
+```
+
+```{r cluster3 plots, echo=FALSE}
+
+qplot(pH, quality, data=wine, color=factor(clust3$cluster))
+qplot(alcohol, quality, data=wine, color=factor(clust3$cluster))
+qplot(sulphates, alcohol, data=wine, color=factor(clust3$cluster))
+
+
+```
+
+
+from the table we can see that almost each quality level contain different clusters, is is not as obvious as we can distinguish the color previously. On the other hand, we can see that the size of cluster affect its distribution, since larger size, larger distribution.
+
+
+
+
+#### PCA model
+Then we use the same variables as used in clustering models, and try to do some unsupervised calculation.
+
+
+
+
+
+##### Estimating quality
+we use four PCA variables to describe initial 11 indexes.
+```{r get PCA variables , include=FALSE}
+X = wine[,(1:11)]
+PCAwine = prcomp(X, scale=TRUE, rank=4)
+```
+
+and we can get each variable's description
+```{r PCA variables descriptions, echo=FALSE}
+plot(PCAwine)
+summary(PCAwine)
+```
+we can get create a tidy summary of the loadings:
+```{r loading summary table, echo=FALSE}
+loadings_summary = PCAwine$rotation %>%
+  as.data.frame() %>%
+  rownames_to_column('index')
+
+
+```
+
+```{r show loading summary table, echo=FALSE, results='asis'}
+kable(loadings_summary[, 1:4], caption = "loading summary table")
+```
+
+
+
+
+Then we can predict quality with PCA summaries
+```{r PCA variables regression, include=FALSE}
+
+```
+
+
+
+
