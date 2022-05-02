@@ -3,8 +3,7 @@ title: "HW4_1"
 author: "Lizhao"
 date: '2022-04-22'
 output: 
-  md_document:
-    toc: yes
+  md_document
 ---
 
 ### Clustering and PCA
