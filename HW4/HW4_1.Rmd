@@ -33,8 +33,10 @@ distance_between_wines = dist(X)
 To distinguish color, we first cluster the dataset into two parts, then we run k-means with 2 clusters and 25 starts, and I create plots to show different clusters' color and other variables.
 ```{r cluster, include=FALSE}
 clust1 = kmeans(X, 2, nstart=25)
-clust1
+
 ```
+
+Since there are many variables, we only choose pH value, density, sulphates as x-axis variable, and see whether the cluster model can distinguish their colors.
 
 ```{r plot for pH & density, echo=FALSE}
 qplot(pH, color, data=wine,color=factor(clust1$cluster))
@@ -43,7 +45,7 @@ qplot(sulphates, color, data=wine,color=factor(clust1$cluster))
 ```
 we can clearly see that cluster 1 is almost white and cluster 2 is almost red, no matter what variable is on the x-axis.
 
-then we use kmeans++ method, and get the plot
+then we use kmeans++ method, and get its normalized data and plots. (we still use __pH__, __alcohol__, __sulphates__)
 
 
 ```{r kmeans++ initialization, echo=FALSE}
@@ -59,7 +61,7 @@ qplot(sulphates, color, data=wine,color=factor(clust2$cluster))
 ```
 we also try hierarchical clustering, but the size of cluster is not very balanced, so we don't include too much details for this methods. I just show 6 clusters size under this method.
 
-```{r, hierarchical clustering}
+```{r hierarchical clustering, echo=FALSE}
 X = wine[,(1:11)]
 X = scale(X, center=TRUE, scale=TRUE)
 
@@ -73,7 +75,7 @@ summary(factor(cluster3))
 
 
 ##### distinguish quality
-In this case, I set 6 clusters, for each color it has 3 level quality, and we create plots to show that different clusters with different qualies
+In this case, I set 6 clusters and we create plots to show that different clusters with different qualites. We use __pH__, __alcohol__, __sulphates__ as x-axis separately, and try to find any features about their qualities.
 
 ```{r make 6 clusters, include=FALSE}
 clust3 = kmeans(X, 6, nstart=25)
@@ -83,13 +85,13 @@ clust3 = kmeans(X, 6, nstart=25)
 
 qplot(pH, quality, data=wine, color=factor(clust3$cluster))
 qplot(alcohol, quality, data=wine, color=factor(clust3$cluster))
-qplot(sulphates, alcohol, data=wine, color=factor(clust3$cluster))
+qplot(sulphates, quality, data=wine, color=factor(clust3$cluster))
 
 
 ```
 
 
-from the table we can see that almost each quality level contain different clusters, is is not as obvious as we can distinguish the color previously. On the other hand, we can see that the size of cluster affect its distribution, since larger size, larger distribution.
+from the table we can see that almost each quality level contain different clusters, it is not as obvious as we can distinguish the color previously. On the other hand, we can see that the size of cluster affect its distribution, since larger size, larger distribution.
 
 
 
@@ -131,7 +133,7 @@ p2
 p3
 ```
 
-According to these plots, we can see that for variable `PCA1`, we can see estimated values indeed has different distribution for different colors, white wine's estimated value is almost around __(-1.5, 2.5)__ , red wine estimated value is almost around __(-4, -0.5)__. White wine has a wider distribution than red wine in terms of estimated PC2's values. Red wine has a wider distribution than white wine in terms of estimated PC3's values.
+According to these plots, we can see that for variable `PC1`, we can see estimated values indeed has different distribution for different colors, white wine's estimated value is almost around __(-1.5, 2.5)__ , red wine estimated value is almost around __(-4, -0.5)__. White wine has a wider distribution than red wine in terms of estimated PC2's values. Red wine has a wider distribution than white wine in terms of estimated PC3's values.
 
 
 Then we continue to plot different PCA variables value for different quality.
