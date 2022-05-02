@@ -34,6 +34,7 @@ sigma = attr(X,"scaled:scale")
 we first use k-means with 10 clusters and 50 starts, then we will use kmeans++ initialization, then finally we will use hierarchical clustering method, in order to see is there any difference between these cluster methods.
 ##### k-means
 ```{r k-means , include=FALSE}
+set.seed(10000)
 clust1 = kmeans(X, 10, nstart=50)
 
 ```
@@ -41,45 +42,46 @@ clust1 = kmeans(X, 10, nstart=50)
 Firstly, we divide them into 10 clusters. Then we can show the size and mean value for each tag in terms of different clusters. 
 
 ```{r clust1 shows, echo=FALSE}
-set.seed(10000)
+
 clust1$size
 clust1_sum <- clust1$center%>% as.data.frame()%>%rownames_to_column('cluster_No')
-clust1_sum
+
 ```
-we can see that cluster 9 has the largest size. To do analysis, we select top 3 clusters (cluster 9, 2, 6), we select the top three largest clusters to analyze their characteristics, so as to maximize the positioning of their potential consumers.
+we can see that cluster 10 has the largest size. To do analysis, we select top 3 clusters (cluster 10, 3, 8), we select the top three largest clusters to analyze their characteristics, so as to maximize the positioning of their potential consumers.
 
 ```{r biggest cluster, echo=FALSE}
-biggest_clust <-  clust1_sum[clust1_sum$cluster_No == 9 | clust1_sum$cluster_No == 2 | clust1_sum$cluster_No == 6, ]
-target <- c(9,2,6)
+biggest_clust <-  clust1_sum[clust1_sum$cluster_No == 10 | clust1_sum$cluster_No == 3 | clust1_sum$cluster_No == 8, ]
+target <- c(10,3,8)
 biggest_clust <- biggest_clust[match(target, biggest_clust$cluster_No), ]
 # https://stackoverflow.com/questions/11977102/order-data-frame-rows-according-to-vector-with-specific-order
 
 kable(biggest_clust, caption = 'Top 3 biggest clusters data under kmeans')
 ```
 
-From the table we can see that, under normalized data, cluster 3 has larger number of twitters about we can estimate that for largest followers group, they tend to have lower twitters than other group. It is a weird conclusion, but according to the table, they indeed has negative value for each tags. There are serval possibility: 1. they like using twitter and post some topics that not be included in given tags.  2. It is totally possible that they seldom post twitters since the value of **uncategorized** tag is also negative, as we always said: __the silent majority__.
+From the table we can see that, under normalized data, cluster 10 has larger number of twitters followers, but they tend to have lower twitters than other group. It is a weird conclusion, but according to the table, they indeed has negative value for each tags. There are serval possibility: 1. they like using twitter and post some topics that not be included in given tags.  2. It is totally possible that they seldom post twitters since the value of **uncategorized** tag is also negative, as we always said: __the silent majority__.
 
-On the other hand, clusetr 10 has a obvious larger value in terms of **chatter** and **photo-sharing** and **shopping** tags(larger than 1), also have a relative larger number of twitters about  **business** and **current_events**. Due to its lager size (1065), we can conclude that NutrientH20 should focus more on promoting products in these areas in order to better attract followers to buy products. 
+On the other hand, clusetr 3 has a obvious larger value in terms of **chatter** and **photo-sharing** and **shopping** tags(larger than 1), also have a relative larger number of twitters about  **business** and **current_events**. Due to its lager size (1065), we can conclude that NutrientH20 should focus more on promoting products in these areas in order to better attract followers to buy products. 
 
 ##### k++ means 
 we then use `k++ means` method to do clustering again. 
 
 ```{r k means ++clusters, include=FALSE}
+set.seed(10000)
 clust2 = kmeanspp(X, k=10, nstart=50)
 ```
 
 Then we can show the size and mean value for each tag in terms of different clusters
 ```{r  k++ sum, echo=FALSE}
-set.seed(10000)
+
 clust2$size
 clust2_sum <- clust2$center%>% as.data.frame()%>%rownames_to_column('cluster_No')
 clust2_sum
 ```
-we can see that cluster 8 has the largest size. As before, we extract the data for the first three largest groups.
+we can see that cluster 2 has the largest size. As before, we extract the data for the first three largest groups.
 ```{r k++ summary, echo=FALSE}
-biggest_clust2 <- clust2_sum[clust2_sum$cluster_No ==8 | clust2_sum$cluster_No == 5 | clust2_sum$cluster_No ==9, ]
+biggest_clust2 <- clust2_sum[clust2_sum$cluster_No ==2 | clust2_sum$cluster_No == 6 | clust2_sum$cluster_No ==9, ]
 
-target <- c(8,5,9)
+target <- c(2,6,9)
 biggest_clust2 <- biggest_clust2[match(target, biggest_clust2$cluster_No), ]
 
 kable(biggest_clust2, caption = 'Top 3 biggest clusters data under kmeans++')
@@ -113,7 +115,7 @@ D_2 = D %>% group_by(z)%>%summarise_all('mean')
 #https://stackoverflow.com/questions/40947288/how-to-calculate-mean-of-all-columns-by-group
 ```
 
-we can see that cluster 2 has the largest size. So we focus on this biggest cluster. Finally, after analyzing we still use the conclusion from __kmeans__ and __kmeans++__. 
+we can see that cluster 2 has the largest size. So when we focused on this biggest cluster, it still use the same previous circumstance: __the silent majority__. Finally, after analyzing we still use the conclusion from __kmeans__ and __kmeans++__. 
 
 
 ```{r show largest cluster, echo=FALSE}
