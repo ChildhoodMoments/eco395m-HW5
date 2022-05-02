@@ -136,7 +136,7 @@ I think the association rules make sense, it shows several major commodity categ
 plot(basketrules, method = 'graph', size = 0.5)
 ```
 
-Now we can see clearly that association rules make senses.
+Now we can see clearly that association rules is meaningful, since it list a large number of commodity and specific combination. In addition, for many generalized categories of goods, there are many arrows pointing to them, it fits the logic of my practical life.
 
 
 
