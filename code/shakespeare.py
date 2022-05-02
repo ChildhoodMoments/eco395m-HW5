@@ -142,7 +142,10 @@ def load_stopwords():
     with open(STOPWORDS_PATH, 'r',encoding='utf-8') as in_file:
         list_file = in_file.readlines()
         for i in list_file:
-            stopwords.add(i.strip())
+            flited_str_content = re.sub('[^A-Za-z\s]', '', i)
+            flited_str_content_2 = re.sub("\s+", " ", flited_str_content)
+            stopwords.add(flited_str_content_2.strip())
+
     return stopwords
 
 # stop_words_revised = load_stopwords()
