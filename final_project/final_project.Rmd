@@ -1,0 +1,396 @@
+---
+title: "final_project"
+author: "Lizhao"
+date: '2022-05-04'
+output: 
+  md_document:
+  toc: TRUE
+  toc_float: TRUE
+---
+
+
+
+I collected data on all players of FIFA2019 on the kaggle website, including height, weight, and various ability values. As one of the most popular football games, it introduces many variables to measure the ability of players. In this article, I found that each player has their own Preferred Foot, the number of players with the preferred left foot is less, but the average and median of their multiple ability values are greater than the players with the Preferred Right Foot. 
+
+# Abstract 
+My question is: Can we predict the preferred foot of a player based on his various abilities? We used __LASSO__, __Logistics model (based on AIC and CV)__, __stepwise function__, __RandomForest model__ to predict the binominal variable of preferred foot, and finally we came to a conclusion based on the ROC curve graph:
+
+
+# Introduction
+Let's first look at a data comparison of preferred left foot and preferred right foot players (In this project we analyze the player's  other ability values):
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(dplyr)
+data <- read.csv('D:/01 UT Austin/2022 spring/big data python/eco395m-HW5/data.csv', encoding = 'UTF-8')
+#data_2 <- read.csv('https://raw.githubusercontent.com/ChildhoodMoments/data-mining/main/data.csv', encoding = 'UTF-8')
+
+
+```
+
+
+```{r preprocessig dataset, include=FALSE}
+Analyzed_data <- data %>% 
+  na_if("")%>% select("Name","Age","Wage","Overall","Potential","Club","Value", "Position","Height","Weight","Preferred.Foot","Potential","Nationality","Crossing","Finishing","HeadingAccuracy",
+                      "ShortPassing","Volleys","Dribbling","Curve",
+                      "FKAccuracy","LongPassing","BallControl",
+                      "Acceleration","SprintSpeed","Agility",
+                      "Reactions","Balance","ShotPower","Jumping",
+                      "Stamina","Strength","LongShots","Aggression",
+                      "Interceptions","Positioning","Vision",
+                      "Penalties","Composure","Marking",
+                      "StandingTackle","SlidingTackle","GKDiving",
+                      "GKHandling","GKKicking","GKPositioning",
+                      "GKReflexes") 
+
+# https://stackoverflow.com/questions/56548774/using-str-extract-to-extract-dollar-amounts
+# extract their wage number
+Analyzed_data <- Analyzed_data %>%   mutate(wage_amount = parse_number(str_match(Wage,"\\€([0-9,.]+)")[,2]))
+
+# extract their height and transfer into centimeter
+#https://stackoverflow.com/questions/54693260/height-conversion-in-r
+Analyzed_data <- Analyzed_data %>% separate(Height, c('feet', 'inches'), "'", convert = TRUE)  
+Analyzed_data <- Analyzed_data %>%mutate(height_cm = (12*feet + inches)*2.54)
+
+# extract their weight
+Analyzed_data <- Analyzed_data %>% mutate(weight_amount = gsub("[^0-9]","",Analyzed_data$Weight))
+# https://stackoverflow.com/questions/14543627/extracting-numbers-from-vectors-of-strings
+
+Analyzed_data <- Analyzed_data %>%   mutate(weight_amount_2 = parse_number(str_match(Weight,"[0-9,.]+lbs")))
+
+# transfer PPreferred.Foot == 'Right' equal to 1, Preferred.Foot == 'Left' equal to 0
+Analyzed_data <- Analyzed_data %>% mutate(perfoot_index =  ifelse(Preferred.Foot == 'Right', c(1), c(0)))
+Analyzed_data <- na.omit(Analyzed_data)  
+```
+
+
+```{r set up foot prediction, echo=FALSE}
+library(rsample)
+Y <- Analyzed_data %>% 
+  na_if("")%>% select("perfoot_index","Age","height_cm","weight_amount_2","Crossing","Finishing","HeadingAccuracy",
+                      "ShortPassing","Volleys","Dribbling","Curve",
+                      "FKAccuracy","LongPassing","BallControl",
+                      "Acceleration","SprintSpeed","Agility",
+                      "Reactions","Balance","ShotPower","Jumping",
+                      "Stamina","Strength","LongShots","Aggression",
+                      "Interceptions","Positioning","Vision",
+                      "Penalties","Composure","Marking",
+                      "StandingTackle","SlidingTackle","GKDiving",
+                      "GKHandling","GKKicking","GKPositioning",
+                      "GKReflexes")
+
+left_foot <- subset(Y, perfoot_index == 0)
+right_foot <-  subset(Y, perfoot_index == 1)
+
+left_foot_sum <- summary(left_foot)%>% as.data.frame()
+right_foot_sum <- summary(right_foot)%>% as.data.frame()
+
+left_right_players <-  Analyzed_data %>% group_by(Analyzed_data$Preferred.Foot) %>% count()%>% as.data.frame()
+
+
+Y <- na.omit(Y) 
+Y_table = Y %>% as.data.frame()
+
+
+Y_split = initial_split(Y_table, prop = 0.8)
+Y_train = training(Y_split)
+Y_test = testing(Y_split)
+
+
+```
+
+```{r show left right foot difference, echo=FALSE}
+library(knitr)
+kable(left_foot_sum, caption = "Left preferred foot summary table", encoding = "UTF-8")
+kable(right_foot_sum, caption = "Right preferred foot summary table", encoding = "UTF-8")
+kable(left_right_players, caption = 'Number of preferred', encoding = 'UTF-8')
+
+```
+
+We can see that in all abilities, left-footed players are better, as evidenced by both the median and the average. Of course, we have to mention one important thing, there are far fewer left-footed players than right-footed players. But based on this difference, I tried to use machine learning to predict the player's dominant foot by calculating various ability values of a player. 
+
+Potential Significance: Since left-footed players have higher stats than right-footed players, if we predict based on a player's stats that his dominant foot is the left foot but his dominant foot is actually the right foot, it means that under the same circumstances, He probably surpasses someone of the same ability but is left footed, in other words, at his own level, he is better in terms of perferred foot. This can be used as a form of self-encouragement
+
+
+# Methods
+
+The data we mainly use in this project include: 
+
+*Dependent variable:* __perfoot_index__, preferred left foot is 0, preferred right foot is 1. 
+
+*Independent variable:* __Age,  height_cm, weight_amount_2, Crossing, Finishing, HeadingAccuracy__ and other ability values.
+
+I mainly use 3 methods, LASSO method (based on AIC and based on cross-validation), logistic model, and random forest model. First, I split dataset into training set and test set. Second, I use these methods and do regression. Third, I use the estimated regression model and test their accuracy based on test set. Finally, I create a ROC curve and f1 score for each model, judge which is the best model to complete my goal. 
+
+
+### LASSO model
+I first use `gamlr` package to do the regression, and I choose the coefficient based on the AIC measurement. In this part, I show the plots of regression result, and the plot of AIC depends on different lambda.
+```{r lasso based on AIC, echo=FALSE}
+
+scx = model.matrix(perfoot_index ~ .-1, data=Y_train) %>% scale()
+# do -1 to drop intercept!
+
+scy = Y_train$perfoot_index %>% as.integer()
+
+
+library(gamlr)
+library(glmnet)
+sclasso = gamlr(scx, scy, family="binomial", nlambda = 200)
+plot(sclasso)
+
+# AIC selected coef
+# note: AICc = AIC with small-sample correction.  See ?AICc
+#AICc(sclasso)  # the AIC values for all values of lambda
+plot(sclasso$lambda, AICc(sclasso))
+plot(log(sclasso$lambda), AICc(sclasso))
+
+min_lambda <- log(sclasso$lambda[which.min(AICc(sclasso))])
+
+scbeta = coef(sclasso) 
+```
+
+
+
+```{r show min lambda, include=FALSE}
+min_lambda
+sum(scbeta!=0)
+scbeta
+```
+
+Then I use Lasso do some prediction and set `ifelse(lasso_predict > 0.5, 1, 0)`, and it shows the result like:  
+```{r Lasso with AIC prediction, echo=FALSE}
+
+lasso_predict = predict(sclasso, Y_test[2:38], lambda = min_lambda, type = 'response') ##### that is new data for prediction, cannot include the dependent variable in the prediction!!!!
+
+
+AIClasso_predct_result = ifelse(lasso_predict > 0.5, 1, 0)
+AIClasso_result_table = table(y = Y_test$perfoot_index, yhat = AIClasso_predct_result)
+kable(AIClasso_result_table, caption = "LASSO result when choose min lambda")
+
+```
+
+
+Now I try LASSO regression without AIC approximation, but with cross validation. Then I plot the comparison plot between AICc and Cross Validation. 
+```{r withou AIC, echo=FALSE}
+# Now without the AIC approximation:
+# cross validated lasso (`verb` just prints progress)
+# this takes a little longer, but still so fast compared to stepwise
+n = nrow(Y_train)
+sccvl = cv.gamlr(scx, scy, nfold=10, family="binomial", verb=TRUE)
+
+# plot the out-of-sample deviance as a function of log lambda
+# Q: what are the bars associated with each dot? 
+plot(sccvl, bty="n")
+
+## CV min deviance selection
+scb.min = coef(sccvl, select="min")
+# log(sccvl$lambda.min)
+# sum(scb.min!=0) # note: this is random!  because of the CV randomness
+
+## CV 1se selection (the default)
+scb.1se = coef(sccvl)
+# log(sccvl$lambda.1se)
+# sum(scb.1se!=0) ## usually selects all zeros (just the intercept)
+
+## comparing AICc and the CV error
+# note that AIC is a pretty good estimate of out-of-sample deviance
+# for values of lambda near the optimum
+# outside that range: much worse  
+plot(sccvl, bty="n",)
+lines(log(sclasso$lambda),AICc(sclasso)/n, col="green", lwd=2)
+legend("top", fill=c("blue","green"),
+       legend=c("CV","AICc"), bty="n")
+```
+I use Lasso do some prediction and set `ifelse(lasso_predict > 0.5, 1, 0)`, and it shows the result like:  
+```{r cv lasso, echo=FALSE}
+pred_cvlasso = predict(sccvl, Y_test[2:38], lambda = scb.min, type="response")
+pred_cvlasso_result = ifelse(pred_cvlasso > 0.5, 1, 0)
+cvlasso_table = table(y = Y_test$perfoot_index, yhat = pred_cvlasso_result)
+cvlasso_table
+```
+
+
+
+## logistic regression
+
+
+In this part, I try logistic model to estimate players' preferred feet. And it provides the result like (under `ifelse(log_prediction > 0.5, 1, 0)`): 
+```{r   logit model distinguish prefer foot, echo=FALSE}
+log_foot = glm(perfoot_index ~ .,data = Y_train, family = 'binomial')
+
+log_prediction = predict(log_foot, Y_test)
+
+log_predct_result = ifelse(log_prediction > 0.5, 1, 0)
+
+result_table = table(y = Y_test$perfoot_index, yhat = log_predct_result)
+
+result_table
+```
+
+
+
+## stepwise function
+I use the stepwise function to  estimate players' preferred feet. Below it gives part of prediction result, under `ifelse(stepwise_pred>0.5, 1, 0)`. 
+
+```{r stepwise, include=FALSE}
+full = glm(perfoot_index ~ ., data=Y_train, family=binomial)
+
+## A forward stepwise procedure
+# null model
+null = glm(perfoot_index ~ 1, data=Y_train, family=binomial)
+
+lm_step = step(full, 
+               scope=~(.))
+
+# forward stepwise: it takes a long time!
+# system.time(fwd <- step(null, scope=formula(full), dir="forward"))
+ # chooses around 70 coef
+stepwise_pred = predict(lm_step, Y_test)
+```
+
+```{r show the result, echo=FALSE}
+stepwise_pred = predict(lm_step, Y_test)
+stepwise_pred_result = ifelse(stepwise_pred>0.5, 1, 0)
+result_table = table(y = Y_test$perfoot_index, yhat = stepwise_pred_result)
+result_table
+```
+
+## Tree model
+
+I use random forest tree model to do the regression, and it also provide some prediction result(under `ifelse(rf_pred > 0.5, 1, 0)`):
+```{r tree model single and random forest, include=FALSE}
+library(rpart)
+load.tree = rpart(perfoot_index ~ .,
+                  data=Y_train, control = rpart.control(cp = 0.001))
+
+
+library(randomForest)
+# now a random forest
+# notice: no tuning parameters!  just using the default
+# downside: takes longer because we're fitting hundreds of trees (500 by default)
+# the importance=TRUE flag tells randomForest to calculate variable importance metrics
+load.forest = randomForest(perfoot_index ~ .,
+                  data=Y_train, importance = TRUE)
+
+
+
+```
+
+```{r}
+rf_pred = predict(load.forest, Y_test)
+rf_pred_result = ifelse(rf_pred > 0.5, 1, 0)
+rf_pred_result_table = table(y = Y_test$perfoot_index, yhat = rf_pred_result)
+rf_pred_result_table
+```
+
+
+```{r show result, echo=FALSE}
+plot(load.forest)
+vi = varImpPlot(load.forest, type=1)
+vi
+```
+
+
+
+
+## ROC curve
+Since we cannot judge any model's accuracy based on single threshold in terms of the binominal variable (left or right), so I create a ROC curve and see their performance. In this case, I set a series of thresholds for the final binomial variable determination, which is a series of data `thresh_grid = seq(0.94, 0.45, by=-0.05)`.
+```{r ROC curves combination, echo=FALSE, message=FALSE, fig.width = 4.5, fig.asp = 0.6, fig.align='center', warning=FALSE}
+
+library(foreach)
+
+lasso_predict = predict(sclasso, Y_test[2:38], lambda = min_lambda, type = 'response')
+pred_cvlasso = predict(sccvl, Y_test[2:38], type="response")
+log_prediction = predict(log_foot, Y_test, type = "response")
+stepwise_pred = predict(lm_step, Y_test, type = 'response')
+tree_pred = predict(load.forest, Y_test, type = 'response')
+
+thresh_grid = seq(0.94, 0.45, by=-0.05)
+roc_curve_spam = foreach(thresh = thresh_grid, .combine='rbind') %do% {
+  yhat_lasso_predict = ifelse(lasso_predict >= thresh, 1, 0)
+  yhat_pred_cvlasso = ifelse(pred_cvlasso >= thresh, 1, 0)
+  yhat_log_prediction = ifelse(log_prediction >= thresh, 1, 0)
+  yhat_stepwise_prediction = ifelse(stepwise_pred >= thresh, 1, 0)
+  yhat_tree_prediction = ifelse(tree_pred >= thresh, 1, 0)
+  
+  # FPR, TPR for linear model
+  confusion_out_lasso = table(y = Y_test$perfoot_index, yhat = yhat_lasso_predict)
+  confusion_out_cvlasso = table(y = Y_test$perfoot_index, yhat = yhat_pred_cvlasso)
+  confusion_out_log = table(y = Y_test$perfoot_index, yhat = yhat_log_prediction)
+  confusion_out_stepwise = table(y = Y_test$perfoot_index, yhat = yhat_stepwise_prediction)
+  confusion_out_tree = table(y = Y_test$perfoot_index, yhat = yhat_tree_prediction)
+  
+  # lasso output data frame
+  out_lasso = data.frame(model = "lasso",
+                       TPR = confusion_out_lasso[2,2]/sum(Y_test$perfoot_index==1),
+                       FPR = confusion_out_lasso[1,2]/sum(Y_test$perfoot_index==0))
+  
+  # cvlasso output data frame
+  out_cvlasso = data.frame(model = "lasso_cv",
+                       TPR = confusion_out_cvlasso[2,2]/sum(Y_test$perfoot_index==1),
+                       FPR = confusion_out_cvlasso[1,2]/sum(Y_test$perfoot_index==0))
+  # logit model output data frame
+   out_logit = data.frame(model = "logistic",
+                       TPR = confusion_out_log[2,2]/sum(Y_test$perfoot_index==1),
+                       FPR = confusion_out_log[1,2]/sum(Y_test$perfoot_index==0))
+   # stepwise function output data frame
+   out_stepwise = data.frame(model = 'stepwise function',
+                       TPR = confusion_out_stepwise[2,2]/sum(Y_test$perfoot_index==1),
+                       FPR = confusion_out_stepwise[1,2]/sum(Y_test$perfoot_index==0))
+   
+   # tree model output data frmae
+   out_tree = data.frame(model = 'tree model',
+                       TPR = confusion_out_tree[2,2]/sum(Y_test$perfoot_index==1),
+                       FPR = confusion_out_tree[1,2]/sum(Y_test$perfoot_index==0))
+   
+  rbind(out_lasso, out_cvlasso, out_logit, out_stepwise, out_tree)
+} %>% as.data.frame()
+ggplot(roc_curve_spam) + 
+  geom_line(aes(x=FPR, y=TPR, color=model)) + 
+  labs(title="ROC curves: LASSO vs. LASSO_CV vs. logit model vs. randomforest model") +
+  theme_bw(base_size = 10)
+```
+
+
+It looks like the stepwise function has better performance, since the blue line is always above other lines. To confirm our guess, we introduce __f1 score__.
+
+
+## f1 score
+```{r f1_socre compare for different models, echo=FALSE}
+library(ModelMetrics)
+lasso_predict = predict(sclasso, Y_test[2:38], lambda = min_lambda, type = 'response')
+pred_cvlasso = predict(sccvl, Y_test[2:38], type="response")
+log_prediction = predict(log_foot, Y_test, type = "response")
+stepwise_pred = predict(lm_step, Y_test, type = 'response')
+tree_pred = predict(load.forest, Y_test, type = 'response')
+
+# model name
+modelname <- c("LASSO_AIC", "LASSO_CV", "Logistic", "stepwise", "randomforest")
+
+
+
+lasso_aic = f1Score(Y_test$perfoot_index, lasso_predict)
+lasso_cv = f1Score(Y_test$perfoot_index, pred_cvlasso)
+logistic = f1Score(Y_test$perfoot_index, log_prediction)
+stepwise = f1Score(Y_test$perfoot_index, stepwise_pred)
+randomforest = f1Score(Y_test$perfoot_index, tree_pred )
+
+f1SCore <- c(lasso_aic, lasso_cv, logistic, stepwise, randomforest)
+f1Score_result = data.frame(modelname, f1SCore)
+
+kable(f1Score_result, caption = 'f1 score summary for different models')
+
+```
+According to the result, we can see that random forest has the largest f1 score, which means random forest has better performance than other models.
+
+
+
+
+
+
+
+
+
+
+# can cluster model distinguish players's position based on their ability indexes?
